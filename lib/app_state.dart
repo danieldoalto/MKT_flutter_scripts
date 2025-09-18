@@ -1,211 +1,183 @@
-import 'dart:async';
+'''
 import 'dart:io';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:dartssh2/dartssh2.dart';
-import 'package:xterm/xterm.dart';
 import 'package:yaml/yaml.dart';
-import 'package:path/path.dart' as path;
 
 import 'models/router_config.dart';
 import 'models/script.dart';
+import 'models/script_info.dart';
 import 'services/crypto_service.dart';
 
-enum AppStatus {
-  initial,
-  connecting,
-  connected,
-  loadingScripts,
-  executingScript,
-  error,
-}
-
 class AppState with ChangeNotifier {
+  // Private properties
   List<RouterConfig> _routers = [];
-  RouterConfig? _selectedRouter;
   List<Script> _scripts = [];
+  RouterConfig? _selectedRouter;
   Script? _selectedScript;
-  AppStatus _status = AppStatus.initial;
-  String _informationLog = "";
+  ScriptInfo? _scriptInfo;
   SSHClient? _sshClient;
-  final Terminal _terminal = Terminal();
+  bool _isConnected = false;
+  String _statusMessage = 'Initial';
+  String _output = '';
+  String _infoLog = '';
+  bool _isLoading = false; // <<< NOVO: Estado de carregamento
 
+  final CryptoService _cryptoService = CryptoService();
+
+  // Public getters
   List<RouterConfig> get routers => _routers;
-  RouterConfig? get selectedRouter => _selectedRouter;
   List<Script> get scripts => _scripts;
+  RouterConfig? get selectedRouter => _selectedRouter;
   Script? get selectedScript => _selectedScript;
-  AppStatus get status => _status;
-  String get informationLog => _informationLog;
-  Terminal get terminal => _terminal;
+  ScriptInfo? get scriptInfo => _scriptInfo;
+  bool get isConnected => _isConnected;
+  String get statusMessage => _statusMessage;
+  String get output => _output;
+  String get infoLog => _infoLog;
+  bool get isLoading => _isLoading; // <<< NOVO: Getter para o estado
 
   AppState() {
-    _init();
+    _loadConfig();
+    _loadScripts();
   }
 
-  @override
-  void dispose() {
-    disconnectSsh();
-    super.dispose();
-  }
+  // --- Métodos de Lógica Principal ---
 
-  void _init() async {
-    _logInfo("Log manager initialized successfully");
-    await _loadConfig();
-    await _loadScripts();
-  }
-
-  void _logInfo(String message) {
-    final timestamp = DateTime.now().toIso8601String().substring(0, 19).replaceFirst('T', ' ');
-    _informationLog += "[$timestamp] $message\n";
+  void _setLoading(bool loading) {
+    _isLoading = loading;
     notifyListeners();
   }
 
-  void _logError(String message) {
-    final timestamp = DateTime.now().toIso8601String().substring(0, 19).replaceFirst('T', ' ');
-    _informationLog += "[$timestamp] ERROR: $message\n";
-    _status = AppStatus.error;
+  void _log(String message) {
+    final timestamp = DateTime.now().toIso8601String().substring(11, 19);
+    _infoLog += '[$timestamp] $message
+';
     notifyListeners();
   }
 
   Future<void> _loadConfig() async {
     try {
-      const String configFileName = 'config.yml';
-      final String executablePath = path.dirname(Platform.resolvedExecutable);
-      final String configPath = path.join(executablePath, configFileName);
-      File configFile = File(configPath);
+      _log("Loading configurations...");
+      final configFile = File('config.yml');
+      final content = await configFile.readAsString();
+      final yaml = loadYaml(content);
 
-      if (!await configFile.exists()) {
-        configFile = File(configFileName);
-        if (!await configFile.exists()) {
-          throw Exception('config.yml not found in the executable directory or the project root.');
-        }
+      final key = Platform.environment['SCRIPT_RUNNER_KEY'];
+      if (key == null || key.isEmpty) {
+        throw Exception("SCRIPT_RUNNER_KEY environment variable not set.");
       }
+      _cryptoService.setKey(key);
 
-      final configContent = await configFile.readAsString();
-      final dynamic yamlMap = loadYaml(configContent);
+      _routers = (yaml['routers'] as YamlList)
+          .map((routerData) => RouterConfig.fromYaml(routerData, _cryptoService))
+          .toList();
 
-      if (yamlMap == null || yamlMap['routers'] == null) {
-        throw Exception('Invalid config.yml format.');
+      if (_routers.isNotEmpty) {
+        _selectedRouter = _routers.first;
       }
-
-      final List<dynamic> routerList = yamlMap['routers'];
-      _routers = routerList.map((routerData) {
-        final String encryptedPassword = routerData['password'];
-        final String decryptedPassword = CryptoService.decryptPassword(encryptedPassword);
-        return RouterConfig.fromYaml(routerData, decryptedPassword);
-      }).toList();
-
-      _logInfo("Configuration loaded successfully");
-      notifyListeners();
+      _log("Configurations loaded successfully.");
     } catch (e) {
-      _logError("Failed to load config.yml: ${e.toString()}");
+      _statusMessage = 'Error loading config';
+      _log("Error loading config.yml: $e");
     }
+    notifyListeners();
   }
 
   Future<void> _loadScripts() async {
     try {
-      final scriptDir = Directory('scripts');
-      if (!await scriptDir.exists()) {
-        _logInfo('Script directory not found.');
-        _scripts = [];
-        return;
+      _log("Loading scripts...");
+      final scriptsDir = Directory('scripts');
+      _scripts = await scriptsDir
+          .list()
+          .where((item) => item.path.endsWith('.txt'))
+          .map((item) => Script(name: item.uri.pathSegments.last, path: item.path))
+          .toList();
+
+      if (_scripts.isNotEmpty) {
+        _selectedScript = _scripts.first;
       }
-
-      final scriptFiles = scriptDir.listSync().whereType<File>().toList();
-      _scripts = scriptFiles.map((file) {
-        return Script(name: path.basename(file.path), path: file.path);
-      }).toList();
-
-      _logInfo('Loaded ${_scripts.length} scripts.');
-      notifyListeners();
+      _log("Scripts loaded successfully.");
     } catch (e) {
-      _logError('Failed to load scripts: $e');
+      _statusMessage = 'Error loading scripts';
+      _log("Error loading scripts: $e");
     }
+    notifyListeners();
   }
 
-  Future<void> selectRouter(RouterConfig? router) async {
-    if (_selectedRouter != router) {
-      await disconnectSsh();
-      _selectedRouter = router;
-      _selectedScript = null;
-      if (router != null) {
-        _logInfo("Selected router: ${router.name}");
-        await connectSsh();
-      }
-      notifyListeners();
-    }
-  }
-
-  void selectScript(Script? script) {
-    if (_selectedScript != script) {
-      _selectedScript = script;
-      notifyListeners();
-    }
-  }
-
-  Future<void> connectSsh() async {
+  Future<void> connect() async {
     if (_selectedRouter == null) return;
 
-    _status = AppStatus.connecting;
-    _logInfo('Connecting to ${_selectedRouter!.name}...');
-    notifyListeners();
+    _setLoading(true);
+    _statusMessage = 'Connecting to ${_selectedRouter!.name}...';
+    _log('Attempting to connect to ${_selectedRouter!.host}...');
 
     try {
-      _sshClient = await SSHClient(
-        host: _selectedRouter!.host,
-        port: _selectedRouter!.port,
+      final socket = await SSHSocket.connect(_selectedRouter!.host, _selectedRouter!.port);
+
+      _sshClient = SSHClient(
+        socket,
         username: _selectedRouter!.username,
         onPasswordRequest: () => _selectedRouter!.password,
       );
-      _status = AppStatus.connected;
-      _logInfo('Connected to ${_selectedRouter!.name}');
-      notifyListeners();
+
+      await _sshClient!.authenticated;
+      _isConnected = true;
+      _statusMessage = 'Connected to ${_selectedRouter!.name}';
+      _log('Connection successful!');
     } catch (e) {
-      _logError('Failed to connect: $e');
+      _isConnected = false;
+      _statusMessage = 'Connection Failed';
+      _log('Connection failed: $e');
+    } finally {
+      _setLoading(false);
     }
   }
 
-  Future<void> disconnectSsh() async {
+  Future<void> disconnect() async {
+    _setLoading(true);
     if (_sshClient != null) {
       _sshClient!.close();
       _sshClient = null;
-      _status = AppStatus.initial;
-      _logInfo('Disconnected.');
-      notifyListeners();
     }
+    _isConnected = false;
+    _statusMessage = 'Disconnected';
+    _output = '';
+    _log('Disconnected.');
+    _setLoading(false);
   }
 
   Future<void> executeScript() async {
-    if (_sshClient == null || _selectedScript == null) return;
+    if (_sshClient == null || !_isConnected || _selectedScript == null) return;
 
-    _status = AppStatus.executingScript;
-    _logInfo('Executing script: ${_selectedScript!.name}');
-    _terminal.clear();
-    notifyListeners();
+    _setLoading(true);
+    _statusMessage = 'Executing script...';
 
     try {
-      final scriptContent = await File(_selectedScript!.path).readAsString();
-      final session = await _sshClient!.shell();
-      
-      final scriptCompleter = Completer();
+      final scriptFile = File(_selectedScript!.path);
+      final command = await scriptFile.readAsString();
 
-      session.stdout.transform(utf8.decoder).listen((data) {
-        _terminal.write(data);
-      });
-
-      session.stderr.transform(utf8.decoder).listen((data) {
-        _terminal.write(data);
-      });
-
-      session.write(utf8.encode(scriptContent));
-      await session.close();
-
-      _logInfo('Script execution finished.');
+      _log('Executing command: $command');
+      final result = await _sshClient!.run(command);
+      _output = String.fromCharCodes(result);
+      _statusMessage = 'Script executed successfully';
+      _log('Script finished.');
     } catch (e) {
-      _logError('Script execution failed: $e');
+      _statusMessage = 'Script execution failed';
+      _log('Script error: $e');
+    } finally {
+      _setLoading(false);
     }
-    _status = AppStatus.connected;
+  }
+
+  void selectRouter(RouterConfig? router) {
+    _selectedRouter = router;
+    notifyListeners();
+  }
+
+  void selectScript(Script? script) {
+    _selectedScript = script;
     notifyListeners();
   }
 }
+''

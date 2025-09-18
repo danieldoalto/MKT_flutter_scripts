@@ -1,104 +1,93 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:xterm/xterm.dart';
 
 import 'app_state.dart';
-import 'widgets/actions_panel.dart';
 import 'widgets/connection_panel.dart';
-import 'widgets/output_panel.dart';
 import 'widgets/script_execution_panel.dart';
+import 'widgets/actions_panel.dart';
+import 'widgets/output_panel.dart';
 import 'widgets/status_bar.dart';
 
 void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => AppState(),
-      child: const MikrotikScriptRunner(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
-class MikrotikScriptRunner extends StatelessWidget {
-  const MikrotikScriptRunner({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return MaterialApp(
-      title: 'MikroTik SSH Script Runner',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
-        textTheme: GoogleFonts.latoTextTheme(textTheme).copyWith(
-          titleLarge: GoogleFonts.oswald(textStyle: textTheme.titleLarge),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    return ChangeNotifierProvider(
+      create: (context) => AppState(),
+      child: MaterialApp(
+        title: 'MikroTik SSH Script Runner',
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          primaryColor: Colors.blueGrey.shade900,
+          scaffoldBackgroundColor: Colors.grey.shade800,
+          cardColor: Colors.blueGrey.shade900,
+          textTheme: const TextTheme(
+            bodyMedium: TextStyle(color: Colors.white70),
+            titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
+          inputDecorationTheme: const InputDecorationTheme(
+            border: OutlineInputBorder(),
+            labelStyle: TextStyle(color: Colors.white70),
+          ),
+          visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
+        home: const MyHomePage(),
       ),
-      home: const HomeScreen(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class MyHomePage extends StatelessWidget {
+  const MyHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('MikroTik SSH Script Runner'),
-        elevation: 2,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Expanded(child: ConnectionPanel()),
-                SizedBox(width: 8),
-                Expanded(child: ScriptExecutionPanel()),
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ConnectionPanel(),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: ScriptExecutionPanel(),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                ActionsPanel(),
+                SizedBox(height: 8),
+                Expanded(
+                  flex: 3,
+                  child: OutputPanel(),
+                ),
               ],
             ),
           ),
-          const ActionsPanel(),
-          const Divider(height: 1, indent: 8, endIndent: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Consumer<AppState>(
-                          builder: (context, appState, _) => TerminalView(appState.terminal),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Consumer<AppState>(
-                      builder: (context, appState, _) => OutputPanel(
-                        title: 'Information Log',
-                        content: appState.informationLog,
-                      ),
-                    ),
-                  ),
-                ],
+          if (appState.isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(),
               ),
             ),
-          ),
         ],
       ),
       bottomNavigationBar: const StatusBar(),
