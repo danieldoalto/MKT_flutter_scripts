@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
-import '../models/script.dart';
+import '../models/script_info.dart';
 
 class ScriptExecutionPanel extends StatelessWidget {
   const ScriptExecutionPanel({super.key});
@@ -17,19 +17,36 @@ class ScriptExecutionPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Select Script', style: Theme.of(context).textTheme.titleLarge),
+            Text('MikroTik Scripts', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
-            DropdownButton<Script>(
+            DropdownButton<ScriptInfo>(
               isExpanded: true,
-              value: appState.selectedScript,
-              hint: const Text('Select a script'),
-              onChanged: (script) => appState.selectScript(script),
-              items: appState.scripts.map<DropdownMenuItem<Script>>((Script script) {
-                return DropdownMenuItem<Script>(
+              value: appState.selectedMikrotikScript,
+              hint: Text(appState.mikrotikScripts.isEmpty 
+                  ? 'No scripts available - Connect and update scripts first'
+                  : 'Select a script'),
+              onChanged: (script) => appState.selectMikrotikScript(script),
+              items: appState.mikrotikScripts.map<DropdownMenuItem<ScriptInfo>>((ScriptInfo script) {
+                return DropdownMenuItem<ScriptInfo>(
                   value: script,
-                  child: Text(script.name),
+                  child: Text('${script.name} (Level ${script.level})'),
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 16),
+            Text('Description:', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Text(
+                appState.selectedMikrotikScript?.description ?? 'No script selected',
+                style: const TextStyle(fontStyle: FontStyle.italic),
+              ),
             ),
           ],
         ),

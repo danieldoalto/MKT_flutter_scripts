@@ -12,10 +12,12 @@ class StatusBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Row(
         children: [
-          Text('Status: ${appState.status.name}'),
+          Text('Status: ${appState.statusMessage}'),
+          const Spacer(),
+          Text('Routers: ${appState.routers.length}'),
         ],
       ),
     );

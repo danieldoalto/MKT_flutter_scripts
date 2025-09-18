@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
-import '../models/router_config.dart';
+import '../models/router_config.dart' as router_models;
 
 class ConnectionPanel extends StatelessWidget {
   const ConnectionPanel({super.key});
@@ -19,13 +19,13 @@ class ConnectionPanel extends StatelessWidget {
           children: [
             Text('Select Router', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
-            DropdownButton<RouterConfig>(
+            DropdownButton<router_models.RouterConfig>(
               isExpanded: true,
               value: appState.selectedRouter,
               hint: const Text('Select a router'),
               onChanged: (router) => appState.selectRouter(router),
-              items: appState.routers.map<DropdownMenuItem<RouterConfig>>((RouterConfig router) {
-                return DropdownMenuItem<RouterConfig>(
+              items: appState.routers.map<DropdownMenuItem<router_models.RouterConfig>>((router_models.RouterConfig router) {
+                return DropdownMenuItem<router_models.RouterConfig>(
                   value: router,
                   child: Text(router.name),
                 );

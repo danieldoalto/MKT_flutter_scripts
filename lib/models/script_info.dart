@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class ScriptInfo {
   final String name;
   final String description;
