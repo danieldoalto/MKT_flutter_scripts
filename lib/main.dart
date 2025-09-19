@@ -9,6 +9,7 @@ import 'widgets/actions_panel.dart';
 import 'widgets/output_panel.dart';
 import 'widgets/status_bar.dart';
 import 'widgets/ssh_log_panel.dart';
+import 'version.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,7 +23,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => AppState(),
       child: MaterialApp(
-        title: 'MikroTik SSH Script Runner',
+        title: 'MikroTik SSH Script Runner v${AppVersion.version}',
         theme: ThemeData(
           brightness: Brightness.dark,
           primaryColor: Colors.blueGrey.shade900,
@@ -64,13 +65,48 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void _showAboutDialog(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'MikroTik SSH Script Runner',
+      applicationVersion: AppVersion.fullVersion,
+      applicationLegalese: '© 2025 MikroTik SSH Script Runner\n${AppVersion.buildInfo}',
+      children: [
+        const SizedBox(height: 16),
+        Text('Code Name: ${AppVersion.codeName}'),
+        const SizedBox(height: 8),
+        const Text(
+          'A Flutter desktop application for executing scripts on MikroTik routers via SSH with optimized performance and comprehensive logging.',
+          style: TextStyle(fontSize: 14),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Features:\n'
+          '• 90% faster script discovery\n'
+          '• Configurable command templates\n'
+          '• Comprehensive SSH logging\n'
+          '• Flexible password handling\n'
+          '• User level access control',
+          style: TextStyle(fontSize: 12),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MikroTik SSH Script Runner'),
+        title: Text(AppVersion.versionString),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => _showAboutDialog(context),
+            tooltip: 'About',
+          ),
+        ],
       ),
       body: DefaultTabController(
         length: 2,

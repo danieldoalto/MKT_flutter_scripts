@@ -1,0 +1,77 @@
+# MikroTik SSH Script Runner - Configuration Template
+
+# This is a sample configuration file for the MikroTik SSH Script Runner
+# Copy this file to 'config.yml' and customize it for your routers
+
+# Global settings
+app_settings:
+  log_level: "INFO"
+  cache_enabled: true
+  cache_timeout_minutes: 30
+
+# Default commands for all routers (can be overridden per router)
+default_commands:
+  # Command to get list of script names (optimized for performance)
+  list_scripts: ":foreach s in=[/system script find] do={ :put [/system script get $s name] }"
+  
+  # Command to get script comment/description
+  get_comment: ":put [system/script/ get [find name=\"{script_name}\"] comment ]"
+
+# Optional global encryption key (fallback if environment variable not set)
+# Uncomment and set if not using SCRIPT_RUNNER_KEY environment variable
+# encryption_key: "your-32-character-encryption-key-here"
+
+# Router configurations
+routers:
+  # Example router configuration
+  Casa_Daniel:
+    host: "192.168.1.1"
+    port: 22
+    username: "admin"
+    password: "your-password-here"
+    password_encrypted: false  # Set to true if password is encrypted
+    user_level: 2  # 1 or 2 - determines which scripts are accessible
+    description: "Home Router - Main"
+    
+    # Optional: Override default commands for this specific router
+    # commands:
+    #   list_scripts: "custom command for older MikroTik version"
+    #   get_comment: "custom comment retrieval command"
+
+  # Example second router
+  Office_Router:
+    host: "192.168.100.1"
+    port: 22
+    username: "admin"
+    password: "office-password"
+    password_encrypted: false
+    user_level: 1  # Limited access - only mkt1_ scripts
+    description: "Office Router - Branch"
+
+  # Example router with encrypted password
+  Production_Router:
+    host: "10.0.0.1"
+    port: 22
+    username: "admin"
+    password: "encrypted-password-hash-here"
+    password_encrypted: true  # Password is encrypted
+    user_level: 2
+    description: "Production Router - Critical"
+
+# Script naming convention:
+# - mkt1_scriptname: Accessible by user_level 1 and 2
+# - mkt2_scriptname: Accessible by user_level 2 only
+#
+# Example MikroTik scripts:
+# /system script add name="mkt1_backup" comment="Creates system backup"
+# /system script add name="mkt2_reset_config" comment="Resets configuration (admin only)"
+
+# Logging configuration
+logging:
+  enabled: true
+  directory: "logs"
+  max_file_size_mb: 10
+  max_files: 30
+  include_timestamps: true
+  log_ssh_commands: true
+  log_ssh_responses: true
