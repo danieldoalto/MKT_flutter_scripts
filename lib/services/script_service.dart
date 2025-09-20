@@ -1,10 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:dartssh2/dartssh2.dart';
-
-import '../models/script_info.dart';
-import 'ssh_logger.dart';
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:dartssh2/dartssh2.dart';
@@ -167,10 +161,19 @@ class ScriptService {
     return scripts;
   }
 
+  /// Ensures cache directory exists
+  static Future<void> _ensureCacheDirectoryExists() async {
+    final cacheDir = Directory('cache');
+    if (!await cacheDir.exists()) {
+      await cacheDir.create(recursive: true);
+    }
+  }
+
   /// Saves script cache to JSON file
   static Future<void> saveScriptCache(String routerName, List<ScriptInfo> scripts) async {
     try {
-      final fileName = 'scripts_${routerName.replaceAll(' ', '_')}.json';
+      await _ensureCacheDirectoryExists();
+      final fileName = 'cache/scripts_${routerName.replaceAll(' ', '_')}.json';
       final file = File(fileName);
       
       final jsonList = scripts.map((script) => script.toJson()).toList();
@@ -185,7 +188,8 @@ class ScriptService {
   /// Loads script cache from JSON file
   static Future<List<ScriptInfo>> loadScriptCache(String routerName) async {
     try {
-      final fileName = 'scripts_${routerName.replaceAll(' ', '_')}.json';
+      await _ensureCacheDirectoryExists();
+      final fileName = 'cache/scripts_${routerName.replaceAll(' ', '_')}.json';
       final file = File(fileName);
       
       if (!await file.exists()) {

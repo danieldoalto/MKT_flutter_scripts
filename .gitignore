@@ -24,6 +24,7 @@ ios/Runner.xcworkspace
 # IDE specific
 .idea/
 .vscode/
+.qoder/
 *.iml
 *.ipr
 *.iws
@@ -32,3 +33,7 @@ ios/Runner.xcworkspace
 config.yml
 bin/encrypt_password.dart
 *.key
+
+# Cache files (router-specific data)
+cache/*.json
+!cache/README.md

@@ -18,6 +18,8 @@ MikroTik_SSH_Script_Runner_v2.0.0/
 │   ├── 📚 flutter_windows.dll       # Flutter runtime library
 │   └── 📁 data/                     # Application data directory
 ├── 📁 logs/                         # SSH communication logs (created on first run)
+├── 📁 cache/                        # Script cache directory (created on first run)
+│   └── 📄 scripts_[router_name].json # Cached discovered scripts per router
 └── 📁 examples/
     ├── 📄 sample_config.yml         # Sample router configuration
     └── 📄 sample_scripts.json       # Example cached scripts

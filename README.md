@@ -138,8 +138,9 @@ lib/
     └── status_bar.dart          # Status information
 
 config.yml                       # Router configurations & command templates
+cache/                           # Cached discovered scripts per router
+├── scripts_[router_name].json   # Script cache files
 logs/                           # SSH communication logs
-scripts_*.json                  # Cached discovered scripts per router
 ```
 
 ---

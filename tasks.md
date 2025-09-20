@@ -31,7 +31,7 @@ Esta fase foca em fazer o aplicativo ler e manipular os arquivos de configuraç�
   * Desenvolver o parser para transformar o YAML em objetos Dart.  
   * Integrar o módulo de criptografia para descriptografar as senhas em memória.  
 * \[ \] **Tarefa 2.3: Gerenciamento do Cache de Scripts (JSON)**  
-  * Implementar funções para ler e escrever os arquivos scripts\_\[router\_name\].json.
+  * Implementar funções para ler e escrever os arquivos scripts\_\[router\_name\].json no diretório cache/.
 
 ### **Fase 3: Conectividade SSH e Lógica Principal**
 
