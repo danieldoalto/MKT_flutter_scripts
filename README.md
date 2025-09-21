@@ -72,6 +72,7 @@ routers:
 ```
 
 For encrypted passwords, use the encryption tool:
+
 ```bash
 dart run tool/encrypt_passwords.dart
 ```
@@ -159,16 +160,20 @@ logs/                           # SSH communication logs
 ## 📝 Script Naming Convention & Configuration
 
 ### **Script Naming Pattern:**
+
 - `mkt1_scriptname` - Level 1 scripts (accessible by Level 1 and Level 2 users)
 - `mkt2_scriptname` - Level 2 scripts (accessible by Level 2 users only)
 
 ### **Script Description:**
+
 Use the **comment** field in MikroTik to provide script descriptions:
+
 ```
 /system script add name="mkt1_backup" comment="Creates system backup with timestamp"
 ```
 
 ### **Configurable Commands (config.yml):**
+
 ```yaml
 default_commands:
   list_scripts: ":foreach s in=[/system script find] do={ :put [/system script get $s name] }"
@@ -176,6 +181,7 @@ default_commands:
 ```
 
 **Example MikroTik Scripts:**
+
 ```
 # mkt1_backup - Creates system backup
 /system backup save name=backup-$(date)
@@ -191,11 +197,12 @@ default_commands:
 ### **"SCRIPT_RUNNER_KEY environment variable not set"**
 
 Set the environment variable before running:
+
 ```bash
 $env:SCRIPT_RUNNER_KEY="your-secret-key"
 ```
 
-### **"Connection Failed"** 
+### **"Connection Failed"**
 
 - Check router IP address and port
 - Verify SSH is enabled on MikroTik
@@ -225,6 +232,7 @@ $env:SCRIPT_RUNNER_KEY="your-secret-key"
 **All features from the technical specifications have been implemented and optimized!**
 
 ### **Recent Optimizations:**
+
 - ✅ **Performance**: 90% faster script discovery using optimized MikroTik commands
 - ✅ **Flexibility**: Configurable commands per router in config.yml
 - ✅ **Monitoring**: Comprehensive SSH communication logging

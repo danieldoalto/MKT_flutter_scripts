@@ -9,6 +9,7 @@ import 'widgets/actions_panel.dart';
 import 'widgets/output_panel.dart';
 import 'widgets/status_bar.dart';
 import 'widgets/ssh_log_panel.dart';
+import 'widgets/config_editor_panel.dart';
 import 'version.dart';
 
 void main() {
@@ -109,13 +110,14 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       body: DefaultTabController(
-        length: 2,
+        length: 3,
         child: Column(
           children: [
             const TabBar(
               tabs: [
                 Tab(icon: Icon(Icons.router), text: 'Router Control'),
                 Tab(icon: Icon(Icons.terminal), text: 'SSH Logs'),
+                Tab(icon: Icon(Icons.settings), text: 'Settings'),
               ],
             ),
             Expanded(
@@ -163,6 +165,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   const Padding(
                     padding: EdgeInsets.all(8.0),
                     child: SSHLogPanel(),
+                  ),
+                  // Settings tab
+                  Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: ConfigEditorPanel(),
                   ),
                 ],
               ),

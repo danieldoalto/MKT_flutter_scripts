@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:convert';
 import 'dart:io';
 import 'package:dartssh2/dartssh2.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/script_info.dart';
 import '../models/router_config.dart' as router_models;
@@ -161,9 +161,21 @@ class ScriptService {
     return scripts;
   }
 
+  /// Gets the appropriate cache directory for the current platform
+  static Future<Directory> _getCacheDirectory() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Use app documents directory on mobile platforms
+      final appDir = await getApplicationDocumentsDirectory();
+      return Directory('${appDir.path}/cache');
+    } else {
+      // Use local cache directory on desktop platforms
+      return Directory('cache');
+    }
+  }
+
   /// Ensures cache directory exists
   static Future<void> _ensureCacheDirectoryExists() async {
-    final cacheDir = Directory('cache');
+    final cacheDir = await _getCacheDirectory();
     if (!await cacheDir.exists()) {
       await cacheDir.create(recursive: true);
     }
@@ -173,7 +185,8 @@ class ScriptService {
   static Future<void> saveScriptCache(String routerName, List<ScriptInfo> scripts) async {
     try {
       await _ensureCacheDirectoryExists();
-      final fileName = 'cache/scripts_${routerName.replaceAll(' ', '_')}.json';
+      final cacheDir = await _getCacheDirectory();
+      final fileName = '${cacheDir.path}/scripts_${routerName.replaceAll(' ', '_')}.json';
       final file = File(fileName);
       
       final jsonList = scripts.map((script) => script.toJson()).toList();
@@ -189,7 +202,8 @@ class ScriptService {
   static Future<List<ScriptInfo>> loadScriptCache(String routerName) async {
     try {
       await _ensureCacheDirectoryExists();
-      final fileName = 'cache/scripts_${routerName.replaceAll(' ', '_')}.json';
+      final cacheDir = await _getCacheDirectory();
+      final fileName = '${cacheDir.path}/scripts_${routerName.replaceAll(' ', '_')}.json';
       final file = File(fileName);
       
       if (!await file.exists()) {

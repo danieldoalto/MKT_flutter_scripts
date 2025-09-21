@@ -42,6 +42,18 @@ dependencies:
   yaml_edit: ^2.2.2
   path: ^1.9.1
   xterm: ^4.0.0
+  
+  # Android-specific dependencies
+  path_provider: ^2.1.1        # Android storage paths
+  shared_preferences: ^2.2.2   # Android app preferences
+  connectivity_plus: ^5.0.1    # Network state monitoring
+  permission_handler: ^11.0.1  # Android permissions
+  
+  # Configuration Editor dependencies
+  file_picker: ^8.0.0+1        # File picker for backups
+  code_text_field: ^1.1.0      # Syntax highlighted editor
+  highlight: ^0.7.0            # Syntax highlighting languages
+  intl: ^0.19.0                # Date formatting for backups
 
 dev_dependencies:
   flutter_test:
