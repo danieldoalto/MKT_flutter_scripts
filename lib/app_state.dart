@@ -271,4 +271,10 @@ class AppState with ChangeNotifier {
     _selectedMikrotikScript = script;
     notifyListeners();
   }
+
+  /// Reload configuration from config.yml file
+  /// This should be called after configuration changes to update router list
+  Future<void> reloadConfig() async {
+    await _loadConfig();
+  }
 }

@@ -1,13 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
+import 'package:provider/provider.dart';
 import '../services/config_service.dart';
+import '../app_state.dart';
 
 /// Configuration editor panel for editing config.yml
 /// Supports loading, editing, saving, backup, and restore operations
 class ConfigEditorPanel extends StatefulWidget {
-  const ConfigEditorPanel({Key? key}) : super(key: key);
+  const ConfigEditorPanel({super.key});
   
   @override
   _ConfigEditorPanelState createState() => _ConfigEditorPanelState();
@@ -21,7 +22,6 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
   bool _isModified = false;
   bool _isSaving = false;
   List<String> _validationErrors = [];
-  List<BackupInfo> _backups = [];
   String _statusMessage = '';
 
   @override
@@ -31,22 +31,17 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     // Initialize text editor
     _textController = TextEditingController(text: '');
     
-    // Initialize tab controller for editor sections
-    _tabController = TabController(length: 3, vsync: this);
-    
     // Listen for text changes to track modifications
     _textController.addListener(_onTextChanged);
     
     // Load configuration content
     _loadConfig();
-    _loadBackups();
   }
 
   @override
   void dispose() {
     _textController.removeListener(_onTextChanged);
     _textController.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -102,16 +97,23 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
       return;
     }
     
-    // Validate before saving
+    // Execute validation first
     await _validateConfig();
+    
+    // Check if there are validation errors
     if (_validationErrors.isNotEmpty) {
-      final save = await _showConfirmDialog(
+      final proceed = await _showConfirmDialog(
         'Validation Errors',
         'Configuration has validation errors. Save anyway?\n\n${_validationErrors.join('\n')}',
       );
-      if (!save) return;
+      if (!proceed) return;
     }
     
+    // Proceed with actual save
+    await _performActualSave();
+  }
+  
+  Future<void> _performActualSave() async {
     setState(() {
       _isSaving = true;
       _statusMessage = 'Saving configuration...';
@@ -120,15 +122,16 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     try {
       await ConfigService.saveConfig(_textController.text);
       
-      setState(() {
-        _isModified = false;
-        _statusMessage = 'Configuration saved successfully';
-      });
+      // Reload configuration to ensure UI reflects the saved state
+      await _loadConfig();
       
-      // Reload backups after save
-      await _loadBackups();
+      // Notify AppState to reload router configurations
+      if (mounted) {
+        final appState = Provider.of<AppState>(context, listen: false);
+        await appState.reloadConfig();
+      }
       
-      _showSuccessDialog('Save Successful', 'Configuration has been saved successfully.');
+      _showSuccessDialog('Save Successful', 'Configuration has been saved and router list updated successfully.');
       
     } catch (e) {
       setState(() {
@@ -157,6 +160,102 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     }
   }
 
+  /// Show validation dialog
+  Future<void> _showValidationDialog() async {
+    // Execute validation first
+    await _validateConfig();
+    
+    // Show dialog with validation results
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                _validationErrors.isEmpty ? Icons.check_circle : Icons.error,
+                color: _validationErrors.isEmpty ? Colors.green : Colors.red,
+              ),
+              SizedBox(width: 8),
+              Text('Validation Results'),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            constraints: BoxConstraints(maxHeight: 400),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_validationErrors.isEmpty)
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.green),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Configuration is valid',
+                              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.error, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text(
+                                'Configuration has errors:',
+                                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          ..._validationErrors.map((error) => Padding(
+                            padding: EdgeInsets.only(left: 32, bottom: 4),
+                            child: Text(
+                              '• $error',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          )),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Debounced validation to avoid excessive validation calls
   void _validateConfigDebounced() {
     // Simple debouncing - validate after short delay
@@ -165,83 +264,6 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
         _validateConfig();
       }
     });
-  }
-
-  /// Load list of available backups
-  Future<void> _loadBackups() async {
-    try {
-      final backups = await ConfigService.getBackupList();
-      setState(() {
-        _backups = backups;
-      });
-    } catch (e) {
-      // Silent error for backup loading
-      setState(() {
-        _backups = [];
-      });
-    }
-  }
-
-  /// Create manual backup
-  Future<void> _createBackup() async {
-    final name = await _showInputDialog(
-      'Create Backup',
-      'Enter backup name:',
-      'manual_backup',
-    );
-    
-    if (name == null || name.isEmpty) return;
-    
-    try {
-      await ConfigService.createManualBackup(name);
-      await _loadBackups();
-      
-      _showSuccessDialog('Backup Created', 'Backup \"$name\" created successfully.');
-    } catch (e) {
-      _showErrorDialog('Backup Error', 'Failed to create backup: $e');
-    }
-  }
-
-  /// Restore configuration from backup
-  Future<void> _restoreFromBackup(BackupInfo backup) async {
-    final confirm = await _showConfirmDialog(
-      'Restore Backup',
-      'This will replace the current configuration with the backup "${backup.fileName}". Continue?',
-    );
-    
-    if (!confirm) return;
-    
-    try {
-      final content = await File(backup.filePath).readAsString();
-      setState(() {
-        _textController.text = content;
-        _isModified = true;
-      });
-      
-      _showSuccessDialog('Restore Successful', 'Configuration restored from backup.');
-      
-    } catch (e) {
-      _showErrorDialog('Restore Error', 'Failed to restore backup: $e');
-    }
-  }
-
-  /// Delete backup
-  Future<void> _deleteBackup(BackupInfo backup) async {
-    final confirm = await _showConfirmDialog(
-      'Delete Backup',
-      'Delete backup \"${backup.fileName}\"?\nThis action cannot be undone.',
-    );
-    
-    if (!confirm) return;
-    
-    try {
-      await ConfigService.deleteBackup(backup.filePath);
-      await _loadBackups();
-      
-      _showSuccessDialog('Backup Deleted', 'Backup deleted successfully.');
-    } catch (e) {
-      _showErrorDialog('Delete Error', 'Failed to delete backup: $e');
-    }
   }
 
   /// Import configuration from file
@@ -311,14 +333,7 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
         children: [
           _buildToolbar(),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildEditorTab(),
-                _buildBackupTab(),
-                _buildValidationTab(),
-              ],
-            ),
+            child: _buildEditorTab(),
           ),
           _buildStatusBar(),
         ],
@@ -336,7 +351,16 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // RELOAD button
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _loadConfig,
+                  icon: Icon(Icons.refresh),
+                  label: Text('RELOAD'),
+                ),
+                SizedBox(width: 12),
+                // SAVE button
                 ElevatedButton.icon(
                   onPressed: _isLoading || _isSaving ? null : _saveConfig,
                   icon: _isSaving 
@@ -346,59 +370,34 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Icon(Icons.save),
-                  label: Text(_isSaving ? 'Saving...' : 'Save'),
+                  label: Text(_isSaving ? 'Saving...' : 'SAVE'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isModified ? Colors.orange : null,
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 12),
+                // IMPORT button
                 OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _loadConfig,
-                  icon: Icon(Icons.refresh),
-                  label: Text('Reload'),
+                  onPressed: _importConfig,
+                  icon: Icon(Icons.file_upload),
+                  label: Text('IMPORT'),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 12),
+                // EXPORT button
                 OutlinedButton.icon(
-                  onPressed: _createBackup,
-                  icon: Icon(Icons.backup),
-                  label: Text('Backup'),
+                  onPressed: _exportConfig,
+                  icon: Icon(Icons.file_download),
+                  label: Text('EXPORT'),
                 ),
-                Spacer(),
-                if (Platform.isAndroid || Platform.isIOS) ...[  
-                  IconButton(
-                    onPressed: _importConfig,
-                    icon: Icon(Icons.file_upload),
-                    tooltip: 'Import Config',
-                  ),
-                  IconButton(
-                    onPressed: _exportConfig,
-                    icon: Icon(Icons.file_download),
-                    tooltip: 'Export Config',
-                  ),
-                ] else ...[
-                  OutlinedButton.icon(
-                    onPressed: _importConfig,
-                    icon: Icon(Icons.file_upload),
-                    label: Text('Import'),
-                  ),
-                  SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: _exportConfig,
-                    icon: Icon(Icons.file_download),
-                    label: Text('Export'),
-                  ),
-                ],
+                SizedBox(width: 12),
+                // VALIDATION button
+                OutlinedButton.icon(
+                  onPressed: _showValidationDialog,
+                  icon: Icon(Icons.check_circle),
+                  label: Text('VALIDATION'),
+                ),
               ],
             ),
-          ),
-          // Tab bar
-          TabBar(
-            controller: _tabController,
-            tabs: [
-              Tab(icon: Icon(Icons.edit), text: 'Editor'),
-              Tab(icon: Icon(Icons.backup), text: 'Backups'),
-              Tab(icon: Icon(Icons.check_circle), text: 'Validation'),
-            ],
           ),
         ],
       ),
@@ -420,96 +419,27 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
               ],
             ),
           )
-        : Expanded(
-            child: TextField(
-              controller: _textController,
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: Platform.isAndroid ? 12 : 14,
-              ),
-              maxLines: null,
-              expands: true,
-              textAlignVertical: TextAlignVertical.top,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter YAML configuration...',
-                contentPadding: EdgeInsets.all(12),
-              ),
-            ),
-          ),
-    );
-  }
-
-  /// Build backup management tab
-  Widget _buildBackupTab() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Configuration Backups',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          SizedBox(height: 16),
-          Expanded(
-            child: _backups.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.backup, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'No backups available',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Backups are created automatically when saving\nor you can create manual backups.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
+        : Column(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _textController,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: Platform.isAndroid ? 12 : 14,
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _backups.length,
-                  itemBuilder: (context, index) {
-                    final backup = _backups[index];
-                    return Card(
-                      child: ListTile(
-                        leading: Icon(Icons.description),
-                        title: Text(backup.fileName),
-                        subtitle: Text(
-                          '${backup.formattedDate} • ${backup.formattedSize}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: () => _restoreFromBackup(backup),
-                              icon: Icon(Icons.restore),
-                              tooltip: 'Restore',
-                            ),
-                            IconButton(
-                              onPressed: () => _deleteBackup(backup),
-                              icon: Icon(Icons.delete),
-                              tooltip: 'Delete',
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Enter YAML configuration...',
+                    contentPadding: EdgeInsets.all(12),
+                  ),
                 ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -591,7 +521,7 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
                   SizedBox(height: 8),
                   _buildRequirementCard(
                     'Required Sections',
-                    'Configuration must contain a \"routers\" section with at least one router.',
+                    'Configuration must contain a "routers" section with at least one router.',
                     Icons.list,
                   ),
                   _buildRequirementCard(
@@ -617,6 +547,36 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
                 ],
               ),
             ),
+          ),
+          SizedBox(height: 16),
+          // Action buttons for validation tab
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  // Return to editor tab
+                  _tabController.animateTo(0);
+                },
+                icon: Icon(Icons.arrow_back),
+                label: Text('Voltar'),
+              ),
+              SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: _isSaving ? null : _performActualSave,
+                icon: _isSaving 
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.save),
+                label: Text(_isSaving ? 'Salvando...' : 'SALVAR'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _validationErrors.isEmpty ? Colors.green : Colors.orange,
+                ),
+              ),
+            ],
           ),
         ],
       ),
