@@ -103,7 +103,7 @@ class ConfigService {
       }
       
       // Write to temporary file first (atomic operation)
-      final tempFile = File('${configPath}.tmp');
+      final tempFile = File('$configPath.tmp');
       await tempFile.writeAsString(content);
       
       // Replace original file with temporary file
@@ -330,7 +330,7 @@ default_commands:
   # Command to get list of script names (optimized for performance)
   list_scripts: ":foreach s in=[/system script find] do={ :put [/system script get \$s name] }"
   # Command to get script comment/description
-  get_comment: ":put [system/script/ get [find name=\"{script_name}\"] comment ]"
+  get_comment: ":put [system/script/ get [find name="{script_name}"] comment ]"
 
 # Router configurations
 routers:

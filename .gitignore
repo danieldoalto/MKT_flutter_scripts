@@ -37,3 +37,8 @@ bin/encrypt_password.dart
 # Cache files (router-specific data)
 cache/*.json
 !cache/README.md
+
+# Log and backup files
+*.log
+*.log.summary.json
+config_backups/

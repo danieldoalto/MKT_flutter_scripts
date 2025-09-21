@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../lib/services/crypto_service.dart';
+import 'package:mikrotik_ssh_script_runner/services/crypto_service.dart';
 
 void main() async {
   print('=== MikroTik SSH Connection Troubleshooter ===\n');

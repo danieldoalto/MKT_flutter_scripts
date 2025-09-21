@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
-import '../lib/services/crypto_service.dart';
+import 'package:mikrotik_ssh_script_runner/services/crypto_service.dart';
 
 void main() async {
   final configFile = File('config.yml');
