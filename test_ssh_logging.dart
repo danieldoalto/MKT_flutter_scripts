@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'lib/services/ssh_logger.dart';
 
 void main() async {
@@ -56,7 +57,15 @@ version: 7.6 (stable)
   print('📁 Check the logs/ directory for generated files.');
   
   // List generated files
-  final logsDir = Directory('logs');
+  String logsPath;
+  if (Platform.isAndroid || Platform.isIOS) {
+    final appDir = await getApplicationDocumentsDirectory();
+    logsPath = '${appDir.path}/logs';
+  } else {
+    logsPath = 'logs';
+  }
+  
+  final logsDir = Directory(logsPath);
   if (await logsDir.exists()) {
     print('\n📋 Generated log files:');
     await for (final entity in logsDir.list()) {

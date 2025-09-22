@@ -5,6 +5,7 @@ import 'package:yaml/yaml.dart';
 
 import 'models/router_config.dart' as router_models;
 import 'models/script_info.dart';
+import 'services/config_service.dart';
 import 'services/crypto_service.dart';
 import 'services/script_service.dart';
 import 'services/ssh_logger.dart';
@@ -74,8 +75,7 @@ class AppState with ChangeNotifier {
   Future<void> _loadConfig() async {
     try {
       _log("Loading configurations...");
-      final configFile = File('config.yml');
-      final content = await configFile.readAsString();
+      final content = await ConfigService.loadConfigContent();
       final yaml = loadYaml(content);
 
       // Check if passwords are encrypted

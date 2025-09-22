@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:yaml/yaml.dart';
 import 'package:intl/intl.dart';
@@ -315,6 +315,17 @@ class ConfigService {
 
   /// Create default configuration content
   static Future<String> _createDefaultConfig() async {
+    // Try to load from assets on mobile platforms
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        final assetBundle = rootBundle;
+        return await assetBundle.loadString('assets/config.yml');
+      } catch (e) {
+        // Fall back to default config if asset not found
+        print('Warning: Could not load config.yml from assets: $e');
+      }
+    }
+    
     return '''
 # MikroTik SSH Script Runner Configuration
 # Copy this file to 'config.yml' and customize it for your routers

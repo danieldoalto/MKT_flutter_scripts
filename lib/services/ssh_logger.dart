@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:path_provider/path_provider.dart';
 
 class SSHLogger {
   static final SSHLogger _instance = SSHLogger._internal();
@@ -10,21 +11,34 @@ class SSHLogger {
   String? _currentSession;
   final List<String> _sessionLogs = [];
 
+  /// Get the appropriate logs directory path for the current platform
+  Future<String> _getLogsDirectoryPath() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Use app documents directory on mobile platforms
+      final appDir = await getApplicationDocumentsDirectory();
+      return '${appDir.path}/logs';
+    } else {
+      // Use local directory on desktop platforms
+      return 'logs';
+    }
+  }
+
   /// Initialize logging for a new SSH session
   Future<void> startSession(String routerName, String host) async {
     final timestamp = DateTime.now();
     final sessionId = '${timestamp.millisecondsSinceEpoch}';
     _currentSession = sessionId;
     
-    // Create logs directory if it doesn't exist
-    final logsDir = Directory('logs');
+    // Get platform-appropriate logs directory
+    final logsPath = await _getLogsDirectoryPath();
+    final logsDir = Directory(logsPath);
     if (!await logsDir.exists()) {
-      await logsDir.create();
+      await logsDir.create(recursive: true);
     }
     
     // Create session log file
     final fileName = 'ssh_${routerName.replaceAll(' ', '_')}_${_formatDateTime(timestamp)}.log';
-    _currentLogFile = File('logs/$fileName');
+    _currentLogFile = File('$logsPath/$fileName');
     
     // Clear session buffer
     _sessionLogs.clear();
@@ -181,7 +195,8 @@ Total operations: ${_sessionLogs.length}
 
   /// Clean old log files (keep last 30 days)
   Future<void> cleanOldLogs() async {
-    final logsDir = Directory('logs');
+    final logsPath = await _getLogsDirectoryPath();
+    final logsDir = Directory(logsPath);
     if (!await logsDir.exists()) return;
     
     final cutoffDate = DateTime.now().subtract(const Duration(days: 30));

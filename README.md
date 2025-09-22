@@ -29,15 +29,63 @@ This is a Flutter desktop application that provides a GUI for executing scripts 
 - ✅ **Flexible Password Handling**: Support for encrypted/plain text passwords
 - ✅ **Improved UI**: Updated script execution panel with descriptions
 
+### 📱 **Adaptive Layout System**
+
+- ✅ **Platform Detection**: Automatic detection of Android vs Windows/Desktop platforms
+- ✅ **Layout Manager**: Central system for managing platform-specific layouts
+- ✅ **Mobile Layout**: Optimized UI for Android with touch-friendly interface
+  - Bottom navigation for space efficiency
+  - Larger touch targets (48dp minimum)
+  - Reduced title prominence for information density
+  - Compact padding and margins
+- ✅ **Desktop Layout**: Maintains original Windows UI experience
+  - Tab-based navigation
+  - Standard desktop spacing and sizing
+  - Full feature accessibility
+- ✅ **Adaptive Theming**: Platform-specific theme adaptations
+  - Mobile: Compact visual density, smaller fonts, reduced elevations
+  - Desktop: Standard density, original sizing, enhanced elevations
+- ✅ **Mobile Components**: Touch-optimized widgets for Android
+  - MobileConnectionPanel with enhanced dropdowns
+  - MobileScriptPanel with level badges and compact descriptions
+- ✅ **Backward Compatibility**: Windows UI remains completely unchanged
+
 ---
 
 ## 🏗️ Architecture
 
-**Framework**: Flutter Desktop  
+**Framework**: Flutter Desktop & Mobile  
 **State Management**: Provider  
 **SSH Library**: dartssh2  
 **Encryption**: AES via encrypt package  
 **Configuration**: YAML parsing
+
+### 📐 Layout System Architecture
+
+```
+lib/layouts/
+├── layout_manager.dart      # Central platform detection and theme adaptation
+├── desktop_layout.dart      # Windows/Desktop UI (original interface)
+└── mobile_layout.dart       # Android UI (touch-optimized)
+
+lib/widgets/
+├── connection_panel.dart         # Original desktop connection widget
+├── script_execution_panel.dart   # Original desktop script widget
+├── mobile_connection_panel.dart  # Touch-optimized connection widget
+└── mobile_script_panel.dart      # Touch-optimized script widget
+```
+
+**Platform Detection Flow:**
+1. `LayoutManager` detects platform using `Platform.isAndroid`
+2. Loads appropriate layout: `MobileLayout` or `DesktopLayout`
+3. Each layout uses platform-specific widgets and configurations
+4. Theme system adapts automatically via `LayoutManager.adaptThemeForPlatform()`
+
+**Design Principles:**
+- **Zero Impact**: Windows UI remains completely unchanged
+- **Touch First**: Android UI optimized for finger navigation
+- **Information Density**: Mobile UI maximizes content visibility
+- **Adaptive Theming**: Platform-specific spacing, fonts, and elevations
 
 ---
 

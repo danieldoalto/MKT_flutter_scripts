@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class SSHLogPanel extends StatefulWidget {
   const SSHLogPanel({super.key});
@@ -21,11 +22,24 @@ class _SSHLogPanelState extends State<SSHLogPanel> {
     _loadLogFiles();
   }
 
+  /// Get the appropriate logs directory path for the current platform
+  Future<String> _getLogsDirectoryPath() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Use app documents directory on mobile platforms
+      final appDir = await getApplicationDocumentsDirectory();
+      return '${appDir.path}/logs';
+    } else {
+      // Use local directory on desktop platforms
+      return 'logs';
+    }
+  }
+
   Future<void> _loadLogFiles() async {
     setState(() => _isLoading = true);
     
     try {
-      final logsDir = Directory('logs');
+      final logsPath = await _getLogsDirectoryPath();
+      final logsDir = Directory(logsPath);
       if (await logsDir.exists()) {
         final files = await logsDir.list().toList();
         files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
