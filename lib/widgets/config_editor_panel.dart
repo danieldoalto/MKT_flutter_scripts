@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+
+
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/config_service.dart';
 import '../app_state.dart';
+import '../pages/theme_settings_page.dart';
 
 /// Configuration editor panel for editing config.yml
 /// Supports loading, editing, saving, backup, and restore operations
@@ -11,7 +14,7 @@ class ConfigEditorPanel extends StatefulWidget {
   const ConfigEditorPanel({super.key});
   
   @override
-  _ConfigEditorPanelState createState() => _ConfigEditorPanelState();
+  State<ConfigEditorPanel> createState() => _ConfigEditorPanelState();
 }
 
 class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTickerProviderStateMixin {
@@ -326,6 +329,15 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     }
   }
 
+  /// Open theme settings page
+  void _openThemeSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ThemeSettingsPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -395,6 +407,13 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
                   onPressed: _showValidationDialog,
                   icon: Icon(Icons.check_circle),
                   label: Text('VALIDATION'),
+                ),
+                SizedBox(width: 12),
+                // THEME SETTINGS button
+                OutlinedButton.icon(
+                  onPressed: _openThemeSettings,
+                  icon: Icon(Icons.palette),
+                  label: Text('TEMAS'),
                 ),
               ],
             ),

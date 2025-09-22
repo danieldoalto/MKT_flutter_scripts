@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'app_state.dart';
 import 'services/dialog_service.dart';
+import 'services/theme_service.dart';
 import 'widgets/connection_panel.dart';
 import 'widgets/script_execution_panel.dart';
 import 'widgets/actions_panel.dart';
@@ -10,37 +11,40 @@ import 'widgets/output_panel.dart';
 import 'widgets/status_bar.dart';
 import 'widgets/ssh_log_panel.dart';
 import 'widgets/config_editor_panel.dart';
+import 'widgets/theme_selector.dart';
 import 'version.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializa o serviço de temas
+  final themeService = ThemeService();
+  await themeService.initialize();
+  
+  runApp(MyApp(themeService: themeService));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ThemeService themeService;
+  
+  const MyApp({super.key, required this.themeService});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => AppState(),
-      child: MaterialApp(
-        title: 'MikroTik SSH Script Runner v${AppVersion.version}',
-        theme: ThemeData(
-          brightness: Brightness.dark,
-          primaryColor: Colors.blueGrey.shade900,
-          scaffoldBackgroundColor: Colors.grey.shade800,
-          cardColor: Colors.blueGrey.shade900,
-          textTheme: const TextTheme(
-            bodyMedium: TextStyle(color: Colors.white70),
-            titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          inputDecorationTheme: const InputDecorationTheme(
-            border: OutlineInputBorder(),
-            labelStyle: TextStyle(color: Colors.white70),
-          ),
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
-        home: const MyHomePage(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => AppState()),
+        ChangeNotifierProvider.value(value: themeService),
+      ],
+      child: Consumer<ThemeService>(
+        builder: (context, themeService, child) {
+          return MaterialApp(
+            title: 'MikroTik SSH Script Runner v${AppVersion.version}',
+            theme: themeService.currentTheme.toThemeData(),
+            home: const MyHomePage(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
   }
@@ -102,6 +106,7 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(AppVersion.versionString),
         actions: [
+          const CompactThemeSelector(),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () => _showAboutDialog(context),
