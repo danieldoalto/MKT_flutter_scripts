@@ -5,6 +5,32 @@ All notable changes to the MikroTik SSH Script Runner project will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-13
+
+### 🚀 **Major Feature Update - Android Support & Config Editor**
+
+This release brings the highly requested Android support with a touch-optimized UI and a built-in Configuration Editor for seamless management.
+
+### ✨ **Added**
+- **Android Compatibility**: Fully functional Android version for mobile network management.
+- **Adaptive Layout System**: Automatic switching between Desktop (tabs) and Mobile (bottom nav) interfaces.
+- **Configuration Editor**: Integrated YAML editor with syntax highlighting and validation.
+- **Backup & Restore**: Automated backup system for configurations with point-in-time restoration.
+- **Touch-Optimized UI**: Enhanced mobile widgets with larger touch targets and responsive spacing.
+- **Flutter SDK Upgrade**: Migrated to Flutter **3.41.4** for improved performance and security.
+
+### 🔧 **Fixed**
+- **Layout Consistency**: Unified layout logic through the new LayoutManager.
+- **Path Handling**: Cross-platform path resolution for cache and logs (Android vs Desktop).
+- **Dependency Conflicts**: Updated all packages to latest stable versions compatible with Flutter 3.41.
+
+### 🏗️ **Technical Improvements**
+- **Architecture**: Implemented `AdaptiveThemeProvider` for platform-specific design tokens.
+- **Lifecycle Management**: Added Android-specific connection handling to prevent drops during app suspension.
+- **Performance**: Improved YAML parsing speed and memory footprint in the editor.
+
+---
+
 ## [2.0.0] - 2025-01-18
 
 ### 🚀 **Major Release - Complete Rewrite & Optimization**

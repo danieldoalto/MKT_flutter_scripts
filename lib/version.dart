@@ -1,7 +1,7 @@
 class AppVersion {
-  static const String version = '2.0.0';
+  static const String version = '2.1.0';
   static const int buildNumber = 1;
-  static const String releaseDate = '2025-01-18';
+  static const String releaseDate = '2026-03-13';
   static const String codeName = 'Optimized Discovery';
   
   static const String fullVersion = '$version+$buildNumber';

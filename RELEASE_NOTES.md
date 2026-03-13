@@ -1,3 +1,32 @@
+# 🚀 MikroTik SSH Script Runner v2.1.0 Release
+
+## **Major Update - Android Support & Built-in Config Editor**
+
+We are thrilled to launch **v2.1.0**, a massive update that brings the power of MikroTik script management to your pocket and provides a professional built-in configuration management system.
+
+---
+
+## 🌟 **What's New in v2.1.0**
+
+### 📱 **Complete Android Support**
+- **Adaptive UI**: The app now detects your platform and switches to a touch-optimized mobile layout.
+- **Mobile Connection Panel**: Redesigned for smaller screens with larger interaction targets.
+- **Android Lifecycle**: Intelligent connection management that stays alive during app switching.
+- **Optimized for Portability**: Manage your routers on the go via mobile networks (4G/5G).
+
+### ⚙️ **Integrated Configuration Editor**
+- **YAML Editor**: Edit `config.yml` directly within the app with syntax highlighting.
+- **Real-time Validation**: Instant feedback on YAML syntax and MikroTik-specific configuration errors.
+- **Backup System**: Automatically creates backups before saving changes.
+- **Easy Restore**: Pick any previous configuration from the history and restore it with one click.
+
+### 🧪 **Technical Core Upgrade**
+- **Flutter 3.41.4**: Built with the latest stable version of Flutter for maximum performance.
+- **Cross-Platform Paths**: Unified file handling for Android and Windows.
+- **Security**: Hardened encrypted password storage and environment variable handling.
+
+---
+
 # 🚀 MikroTik SSH Script Runner v2.0.0 Release
 
 ## **Major Release - Complete Optimization & Enhancement**

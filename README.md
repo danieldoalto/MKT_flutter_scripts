@@ -171,9 +171,10 @@ build/app/outputs/flutter-apk/app-release.apk
 
 **APK Details:**
 - **Application ID**: `com.mikrotik.ssh_runner`
-- **Version**: `2.0.0-android`
+- **Version**: `2.1.0-android`
 - **Size**: ~52MB (optimized with tree-shaking)
 - **Permissions**: Internet, Network State, Storage Access
+- **SDK**: Built with Flutter 3.41.4
 
 ### 6. Build for Windows Release
 
@@ -209,7 +210,7 @@ Release/
 
 **Executable Details:**
 - **Name**: `myapp.exe`
-- **Version**: `2.0.0+1`
+- **Version**: `2.1.0+1`
 - **Architecture**: x64 (64-bit)
 - **Size**: ~27.5MB (complete package)
 - **Dependencies**: Self-contained (no external runtime required)
