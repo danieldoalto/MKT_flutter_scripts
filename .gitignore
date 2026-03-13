@@ -31,6 +31,7 @@ ios/Runner.xcworkspace
 
 # Sensitive files
 config.yml
+assets/config.yml
 bin/encrypt_password.dart
 *.key
 
