@@ -82,43 +82,88 @@ class _SSHLogPanelState extends State<SSHLogPanel> {
     }
   }
 
-  Widget _buildLogList() {
-    if (_logFiles.isEmpty) {
-      return const Center(
-        child: Text(
-          'No SSH logs found.\nConnect to a router to start logging.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _logFiles.length,
-      itemBuilder: (context, index) {
-        final file = _logFiles[index] as File;
-        final fileName = file.uri.pathSegments.last;
-        final stat = file.statSync();
-        final isSelected = _selectedLogFile?.path == file.path;
+  /// Clear all log files from the logs directory
+  Future<void> _clearAllLogs() async {
+    try {
+      final logsPath = await _getLogsDirectoryPath();
+      final logsDir = Directory(logsPath);
+      
+      if (await logsDir.exists()) {
+        final files = await logsDir.list().toList();
         
-        return ListTile(
-          dense: true,
-          selected: isSelected,
-          leading: const Icon(Icons.description, size: 16),
-          title: Text(
-            fileName,
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
+        for (final file in files) {
+          if (file is File && file.path.endsWith('.log')) {
+            await file.delete();
+          }
+        }
+        
+        // Clear current state
+        setState(() {
+          _logFiles.clear();
+          _selectedLogFile = null;
+          _logContent = '';
+        });
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All log files cleared successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error clearing log files: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error clearing logs: $e'),
+            backgroundColor: Colors.red,
           ),
-          subtitle: Text(
-            '${stat.modified.toString().substring(0, 19)} (${(stat.size / 1024).toStringAsFixed(1)} KB)',
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
-          ),
-          onTap: () => _loadLogContent(file),
         );
-      },
-    );
+      }
+    }
   }
+
+  /// Show confirmation dialog before clearing logs
+  Future<void> _showClearLogsDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Clear All Logs'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to delete all log files?\n\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _clearAllLogs();
+    }
+  }
+
+
 
   Widget _buildLogContent() {
     if (_selectedLogFile == null) {
@@ -135,17 +180,50 @@ class _SSHLogPanelState extends State<SSHLogPanel> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(8.0),
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        child: SelectableText(
-          _logContent,
-          style: const TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 11,
-            color: Colors.white70,
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header com informações do arquivo
+          Row(
+            children: [
+              Text(
+                'Content: ${_selectedLogFile!.uri.pathSegments.last}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white70,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_logContent.split('\n').length} lines',
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+              ),
+            ],
           ),
-        ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: Colors.grey),
+          const SizedBox(height: 8),
+          // Conteúdo do log
+          Expanded(
+            child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: SelectableText(
+                  _logContent,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -153,25 +231,20 @@ class _SSHLogPanelState extends State<SSHLogPanel> {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(4),
-              ),
-            ),
-            child: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Título consolidado com fonte menor (seguindo padrão RouterActionsPanel)
+            Row(
               children: [
-                const Icon(Icons.terminal, size: 18),
-                const SizedBox(width: 8),
                 Text(
-                  'SSH Communication Logs',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  'SSH LOGS',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -180,92 +253,72 @@ class _SSHLogPanelState extends State<SSHLogPanel> {
                   tooltip: 'Refresh log files',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.folder_open, size: 16),
-                  onPressed: () async {
-                    // Open logs directory
-                    try {
-                      await Process.run('explorer', ['logs']);
-                    } catch (e) {
-                      print('Could not open logs directory: $e');
-                    }
-                  },
-                  tooltip: 'Open logs folder',
+                  icon: const Icon(Icons.delete_sweep, size: 16),
+                  onPressed: _showClearLogsDialog,
+                  tooltip: 'Clear all log files',
+                  style: IconButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                  ),
                 ),
               ],
             ),
-          ),
-          
-          // Content
-          Expanded(
-            child: Row(
+            const SizedBox(height: 12),
+            
+            // Seção de seleção de arquivo (seguindo padrão Row layout)
+            Row(
               children: [
-                // Log files list
-                SizedBox(
-                  width: 250,
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8.0),
-                        color: Colors.black12,
-                        child: const Row(
-                          children: [
-                            Icon(Icons.list, size: 14),
-                            SizedBox(width: 4),
-                            Text('Log Files', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: _isLoading 
-                            ? const Center(child: CircularProgressIndicator())
-                            : _buildLogList(),
-                      ),
-                    ],
+                Text(
+                  'Log File:',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                
-                // Divider
-                const VerticalDivider(width: 1),
-                
-                // Log content
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8.0),
-                        color: Colors.black12,
-                        child: Row(
-                          children: [
-                            const Icon(Icons.code, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              _selectedLogFile != null 
-                                  ? 'Content: ${_selectedLogFile!.uri.pathSegments.last}'
-                                  : 'Log Content',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                            const Spacer(),
-                            if (_selectedLogFile != null)
-                              Text(
-                                '${_logContent.split('\n').length} lines',
-                                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  child: _logFiles.isEmpty
+                      ? const Text(
+                          'No SSH logs found - Connect to a router to start logging',
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        )
+                      : DropdownButton<File>(
+                          isExpanded: true,
+                          value: _selectedLogFile,
+                          hint: const Text('Select a log file'),
+                          onChanged: (file) => file != null ? _loadLogContent(file) : null,
+                          items: _logFiles.map<DropdownMenuItem<File>>((entity) {
+                            final file = entity as File;
+                            final fileName = file.uri.pathSegments.last;
+                            final stat = file.statSync();
+                            return DropdownMenuItem<File>(
+                              value: file,
+                              child: Text(
+                                '$fileName (${(stat.size / 1024).toStringAsFixed(1)} KB)',
+                                style: const TextStyle(fontSize: 12),
                               ),
-                          ],
+                            );
+                          }).toList(),
                         ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          color: Colors.black87,
-                          child: _buildLogContent(),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            
+            const SizedBox(height: 16),
+            
+            // Conteúdo do log
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                ),
+                child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildLogContent(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

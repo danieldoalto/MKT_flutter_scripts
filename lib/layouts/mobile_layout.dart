@@ -98,6 +98,8 @@ class _MobileLayoutState extends State<MobileLayout> {
                     const Expanded(
                       child: OutputPanel(),
                     ),
+                    // Botões de ação apenas na tela de controle
+                    const BottomActionsPanel(),
                   ],
                 ),
               ),
@@ -188,10 +190,6 @@ class _MobileLayoutState extends State<MobileLayout> {
           ),
         ],
       ),
-      // Botões fixos no final da página
-      persistentFooterButtons: const [
-        BottomActionsPanel(),
-      ],
     );
   }
 }

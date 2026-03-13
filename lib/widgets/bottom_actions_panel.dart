@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
@@ -61,23 +62,34 @@ class BottomActionsPanel extends StatelessWidget {
               ),
             ),
           
-          // Execute Button
+          // Execute Button (when connected) or Close APP Button (when disconnected)
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: ElevatedButton.icon(
-                onPressed: appState.isConnected && 
-                           appState.selectedMikrotikScript != null && 
-                           !appState.isLoading
-                    ? appState.executeScript
-                    : null,
-                icon: const Icon(Icons.play_arrow, size: 16),
-                label: const Text('Execute', style: TextStyle(fontSize: 12)),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  backgroundColor: Colors.orange.shade700,
-                ),
-              ),
+              child: appState.isConnected
+                  ? ElevatedButton.icon(
+                      onPressed: appState.selectedMikrotikScript != null && 
+                                 !appState.isLoading
+                          ? appState.executeScript
+                          : null,
+                      icon: const Icon(Icons.play_arrow, size: 16),
+                      label: const Text('Execute', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        backgroundColor: Colors.orange.shade700,
+                      ),
+                    )
+                  : ElevatedButton.icon(
+                      onPressed: () {
+                        SystemNavigator.pop();
+                      },
+                      icon: const Icon(Icons.exit_to_app, size: 16),
+                      label: const Text('Close APP', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        backgroundColor: Colors.red.shade700,
+                      ),
+                    ),
             ),
           ),
           

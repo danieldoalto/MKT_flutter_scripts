@@ -28,6 +28,7 @@ This is a Flutter desktop application that provides a GUI for executing scripts 
 - ✅ **Detailed SSH Logging**: Comprehensive communication logs in `/logs` folder
 - ✅ **Flexible Password Handling**: Support for encrypted/plain text passwords
 - ✅ **Improved UI**: Updated script execution panel with descriptions
+- ✅ **Smart Button Logic**: Dynamic button behavior - shows "Close APP" when disconnected instead of disabled "Execute"
 
 ### 📱 **Adaptive Layout System**
 
@@ -135,7 +136,83 @@ dart run tool/encrypt_passwords.dart
 
 ```bash
 flutter run -d windows  # or -d linux, -d macos
+flutter run -d emulator-5554  # for Android emulator
 ```
+
+### 5. Build for Android Release
+
+To create an APK for testing on Android devices:
+
+```bash
+flutter build apk --release
+```
+
+**Generated APK location:**
+```
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+**Installation on Android device:**
+
+1. **Enable Developer Options:**
+   - Go to `Settings > About phone`
+   - Tap "Build number" 7 times
+   - Go back to `Settings > Developer options`
+   - Enable "USB debugging"
+
+2. **Install APK methods:**
+   - **USB Transfer**: Copy APK to device and install
+   - **ADB Install**: `adb install build/app/outputs/flutter-apk/app-release.apk`
+   - **File Sharing**: Send via WhatsApp, Drive, Email, etc.
+
+3. **Security Settings:**
+   - Enable `Settings > Security > Unknown sources`
+   - Or `Settings > Apps > Special access > Install unknown apps`
+
+**APK Details:**
+- **Application ID**: `com.mikrotik.ssh_runner`
+- **Version**: `2.0.0-android`
+- **Size**: ~52MB (optimized with tree-shaking)
+- **Permissions**: Internet, Network State, Storage Access
+
+### 6. Build for Windows Release
+
+To create a Windows executable for distribution:
+
+```bash
+flutter build windows --release
+```
+
+**Generated executable location:**
+```
+build/windows/x64/runner/Release/
+```
+
+**Release package contents:**
+```
+Release/
+├── myapp.exe                              (82 KB) - Main executable
+├── flutter_windows.dll                    (19 MB) - Flutter runtime
+├── connectivity_plus_plugin.dll           (90 KB) - Network connectivity
+├── permission_handler_windows_plugin.dll  (112 KB) - Permissions handler
+└── data/
+    ├── app.so                             (7.5 MB) - Compiled Dart code
+    ├── icudtl.dat                         (778 KB) - Internationalization data
+    └── flutter_assets/                    - Application assets
+```
+
+**Distribution:**
+1. **Standalone Package**: Copy entire `Release/` folder (~27.5 MB total)
+2. **All files required**: The executable needs all DLLs and the `data/` folder
+3. **No installation needed**: Run `myapp.exe` directly
+4. **Windows Requirements**: Windows 10 or later (x64)
+
+**Executable Details:**
+- **Name**: `myapp.exe`
+- **Version**: `2.0.0+1`
+- **Architecture**: x64 (64-bit)
+- **Size**: ~27.5MB (complete package)
+- **Dependencies**: Self-contained (no external runtime required)
 
 ---
 

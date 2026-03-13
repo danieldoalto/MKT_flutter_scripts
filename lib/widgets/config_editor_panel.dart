@@ -1,7 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-
-
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/config_service.dart';
@@ -18,26 +16,22 @@ class ConfigEditorPanel extends StatefulWidget {
 }
 
 class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTickerProviderStateMixin {
-  late TextEditingController _textController;
   late TabController _tabController;
-  
-  bool _isLoading = false;
-  bool _isModified = false;
-  bool _isSaving = false;
+  late TextEditingController _textController;
   List<String> _validationErrors = [];
   String _statusMessage = '';
+  bool _isLoading = false;
+  bool _isSaving = false;
+  bool _isModified = false;
+  bool _showToolbar = true;
+  String? _backupPath;
 
   @override
   void initState() {
     super.initState();
-    
-    // Initialize text editor
-    _textController = TextEditingController(text: '');
-    
-    // Listen for text changes to track modifications
+    _tabController = TabController(length: 2, vsync: this);
+    _textController = TextEditingController();
     _textController.addListener(_onTextChanged);
-    
-    // Load configuration content
     _loadConfig();
   }
 
@@ -45,47 +39,34 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
   void dispose() {
     _textController.removeListener(_onTextChanged);
     _textController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
-  /// Handle text changes to track modifications
   void _onTextChanged() {
-    if (!_isModified) {
-      setState(() {
-        _isModified = true;
-      });
-    }
-    
-    // Validate on change with debouncing
-    _validateConfigDebounced();
+    setState(() {
+      _isModified = true;
+    });
   }
 
-  /// Load configuration content from file
   Future<void> _loadConfig() async {
     setState(() {
       _isLoading = true;
       _statusMessage = 'Loading configuration...';
     });
-    
+
     try {
       final content = await ConfigService.loadConfigContent();
       _textController.text = content;
-      
+      await _validateConfig();
       setState(() {
         _isModified = false;
         _statusMessage = 'Configuration loaded successfully';
       });
-      
-      // Validate loaded content
-      await _validateConfig();
-      
     } catch (e) {
       setState(() {
         _statusMessage = 'Error loading configuration: $e';
-        _validationErrors = [e.toString()];
       });
-      
-      _showErrorDialog('Load Error', 'Failed to load configuration: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -93,63 +74,6 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     }
   }
 
-  /// Save configuration to file
-  Future<void> _saveConfig() async {
-    if (!_isModified) {
-      _showInfoDialog('No Changes', 'No changes to save.');
-      return;
-    }
-    
-    // Execute validation first
-    await _validateConfig();
-    
-    // Check if there are validation errors
-    if (_validationErrors.isNotEmpty) {
-      final proceed = await _showConfirmDialog(
-        'Validation Errors',
-        'Configuration has validation errors. Save anyway?\n\n${_validationErrors.join('\n')}',
-      );
-      if (!proceed) return;
-    }
-    
-    // Proceed with actual save
-    await _performActualSave();
-  }
-  
-  Future<void> _performActualSave() async {
-    setState(() {
-      _isSaving = true;
-      _statusMessage = 'Saving configuration...';
-    });
-    
-    try {
-      await ConfigService.saveConfig(_textController.text);
-      
-      // Reload configuration to ensure UI reflects the saved state
-      await _loadConfig();
-      
-      // Notify AppState to reload router configurations
-      if (mounted) {
-        final appState = Provider.of<AppState>(context, listen: false);
-        await appState.reloadConfig();
-      }
-      
-      _showSuccessDialog('Save Successful', 'Configuration has been saved and router list updated successfully.');
-      
-    } catch (e) {
-      setState(() {
-        _statusMessage = 'Error saving configuration: $e';
-      });
-      
-      _showErrorDialog('Save Error', 'Failed to save configuration: $e');
-    } finally {
-      setState(() {
-        _isSaving = false;
-      });
-    }
-  }
-
-  /// Validate configuration content
   Future<void> _validateConfig() async {
     try {
       final errors = await ConfigService.validateConfig(_textController.text);
@@ -163,131 +87,116 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     }
   }
 
-  /// Show validation dialog
-  Future<void> _showValidationDialog() async {
-    // Execute validation first
-    await _validateConfig();
-    
-    // Show dialog with validation results
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                _validationErrors.isEmpty ? Icons.check_circle : Icons.error,
-                color: _validationErrors.isEmpty ? Colors.green : Colors.red,
-              ),
-              SizedBox(width: 8),
-              Text('Validation Results'),
-            ],
-          ),
-          content: Container(
-            width: double.maxFinite,
-            constraints: BoxConstraints(maxHeight: 400),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_validationErrors.isEmpty)
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        border: Border.all(color: Colors.green),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.green),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Configuration is valid',
-                              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        border: Border.all(color: Colors.red),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.error, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text(
-                                'Configuration has errors:',
-                                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          ..._validationErrors.map((error) => Padding(
-                            padding: EdgeInsets.only(left: 32, bottom: 4),
-                            child: Text(
-                              '• $error',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          )),
-                        ],
-                      ),
-                    ),
-                ],
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'SETTINGS',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Close'),
+            const SizedBox(height: 12),
+            _buildToolbar(),
+            Expanded(
+              child: Scrollbar(
+                thumbVisibility: true,
+                trackVisibility: true,
+                child: TextField(
+                  controller: _textController,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: Platform.isAndroid ? 11 : 12,
+                  ),
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                  scrollPadding: EdgeInsets.zero,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Enter YAML configuration...',
+                    contentPadding: EdgeInsets.all(12),
+                  ),
+                ),
+              ),
             ),
+            _buildStatusBar(),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
-  /// Debounced validation to avoid excessive validation calls
-  void _validateConfigDebounced() {
-    // Simple debouncing - validate after short delay
-    Future.delayed(Duration(milliseconds: 500), () {
-      if (mounted) {
-        _validateConfig();
-      }
+  /// Save configuration to file
+  Future<void> _saveConfig() async {
+    setState(() {
+      _isSaving = true;
+      _statusMessage = 'Saving configuration...';
     });
+
+    try {
+      // Validate before saving
+      await _validateConfig();
+      
+      if (_validationErrors.isNotEmpty) {
+        final proceed = await _showConfirmDialog(
+          'Validation Errors',
+          'Configuration has validation errors. Save anyway?\n\n${_validationErrors.join('\n')}',
+        );
+        if (!proceed) {
+          setState(() {
+            _isSaving = false;
+            _statusMessage = 'Save cancelled due to validation errors';
+          });
+          return;
+        }
+      }
+
+      // Create backup before saving
+      await ConfigService.createAutoBackup();
+      
+      // Save configuration
+      await ConfigService.saveConfig(_textController.text);
+      
+      setState(() {
+        _isModified = false;
+        _statusMessage = 'Configuration saved successfully';
+      });
+      
+      _showSuccessDialog('Save Successful', 'Configuration saved successfully.');
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'Error saving configuration: $e';
+      });
+      _showErrorDialog('Save Error', 'Failed to save configuration: $e');
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
   }
 
   /// Import configuration from file
   Future<void> _importConfig() async {
-    if (_isModified) {
-      final discard = await _showConfirmDialog(
-        'Unsaved Changes',
-        'You have unsaved changes. Importing will discard them. Continue?',
-      );
-      if (!discard) return;
-    }
-    
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['yml', 'yaml'],
+        allowMultiple: false,
         withData: true,
       );
       
-      if (result != null && result.files.single.bytes != null) {
-        final content = String.fromCharCodes(result.files.single.bytes!);
+      if (result != null && result.files.single.path != null) {
+        final path = result.files.single.path!;
+        final content = await File(path).readAsString();
         
         // Validate imported content
         final errors = await ConfigService.validateConfig(content);
@@ -329,333 +238,191 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     }
   }
 
+  /// Build toolbar with action buttons
+  Widget _buildToolbar() {
+    return Column(
+      children: [
+        // Action buttons row
+        Row(
+          children: [
+            Text(
+              'Actions:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  _buildActionButton(
+                    icon: Icons.refresh,
+                    label: 'RELOAD',
+                    onPressed: _isLoading ? null : _loadConfig,
+                  ),
+                  _buildActionButton(
+                    icon: _isSaving ? null : Icons.save,
+                    label: _isSaving ? 'Saving...' : 'SAVE',
+                    onPressed: _isLoading || _isSaving ? null : _saveConfig,
+                    isLoading: _isSaving,
+                    isModified: _isModified,
+                  ),
+                  _buildActionButton(
+                    icon: Icons.file_upload,
+                    label: 'IMPORT',
+                    onPressed: _importConfig,
+                  ),
+                  _buildActionButton(
+                    icon: Icons.file_download,
+                    label: 'EXPORT',
+                    onPressed: _exportConfig,
+                  ),
+                  _buildActionButton(
+                    icon: Icons.check_circle,
+                    label: 'VALIDATE',
+                    onPressed: _showValidationDialog,
+                  ),
+                  _buildActionButton(
+                    icon: Icons.palette,
+                    label: 'THEMES',
+                    onPressed: _openThemeSettings,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData? icon,
+    required String label,
+    required VoidCallback? onPressed,
+    bool isLoading = false,
+    bool isModified = false,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: isLoading
+          ? SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 1.5),
+            )
+          : Icon(icon, size: 14),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 11),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: const Size(0, 28),
+        backgroundColor: isModified ? Colors.orange.withOpacity(0.1) : null,
+        side: BorderSide(
+          color: isModified ? Colors.orange : Colors.grey,
+          width: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBar() {
+    if (_statusMessage.isEmpty && !_isModified && _validationErrors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          if (_isModified) ...[
+            Icon(Icons.edit, size: 12, color: Colors.orange),
+            const SizedBox(width: 4),
+            Text(
+              'Modified',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (_statusMessage.isNotEmpty)
+            Expanded(
+              child: Text(
+                _statusMessage,
+                style: const TextStyle(fontSize: 10),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          if (_validationErrors.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.error, size: 12, color: Colors.red),
+            const SizedBox(width: 4),
+            Text(
+              '${_validationErrors.length} error(s)',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Show validation dialog
+  Future<void> _showValidationDialog() async {
+    await _validateConfig();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Configuration Validation'),
+        content: _validationErrors.isEmpty
+            ? Text('✅ Configuration is valid!')
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('❌ Found ${_validationErrors.length} error(s):'),
+                  const SizedBox(height: 8),
+                  ...(_validationErrors.take(5).map((error) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text('• $error', style: TextStyle(fontSize: 12)),
+                      ))),
+                  if (_validationErrors.length > 5)
+                    Text('... and ${_validationErrors.length - 5} more errors'),
+                ],
+              ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Open theme settings page
   void _openThemeSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const ThemeSettingsPage(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildToolbar(),
-          Expanded(
-            child: _buildEditorTab(),
-          ),
-          _buildStatusBar(),
-        ],
-      ),
-    );
-  }
-
-  /// Build toolbar with tabs and action buttons
-  Widget _buildToolbar() {
-    return Container(
-      color: Theme.of(context).primaryColor.withOpacity(0.1),
-      child: Column(
-        children: [
-          // Action buttons
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // RELOAD button
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _loadConfig,
-                  icon: Icon(Icons.refresh),
-                  label: Text('RELOAD'),
-                ),
-                SizedBox(width: 12),
-                // SAVE button
-                ElevatedButton.icon(
-                  onPressed: _isLoading || _isSaving ? null : _saveConfig,
-                  icon: _isSaving 
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.save),
-                  label: Text(_isSaving ? 'Saving...' : 'SAVE'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isModified ? Colors.orange : null,
-                  ),
-                ),
-                SizedBox(width: 12),
-                // IMPORT button
-                OutlinedButton.icon(
-                  onPressed: _importConfig,
-                  icon: Icon(Icons.file_upload),
-                  label: Text('IMPORT'),
-                ),
-                SizedBox(width: 12),
-                // EXPORT button
-                OutlinedButton.icon(
-                  onPressed: _exportConfig,
-                  icon: Icon(Icons.file_download),
-                  label: Text('EXPORT'),
-                ),
-                SizedBox(width: 12),
-                // VALIDATION button
-                OutlinedButton.icon(
-                  onPressed: _showValidationDialog,
-                  icon: Icon(Icons.check_circle),
-                  label: Text('VALIDATION'),
-                ),
-                SizedBox(width: 12),
-                // THEME SETTINGS button
-                OutlinedButton.icon(
-                  onPressed: _openThemeSettings,
-                  icon: Icon(Icons.palette),
-                  label: Text('TEMAS'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build editor tab
-  Widget _buildEditorTab() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: _isLoading
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text(_statusMessage),
-              ],
-            ),
-          )
-        : Column(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _textController,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: Platform.isAndroid ? 12 : 14,
-                  ),
-                  maxLines: null,
-                  expands: true,
-                  textAlignVertical: TextAlignVertical.top,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Enter YAML configuration...',
-                    contentPadding: EdgeInsets.all(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-    );
-  }
-
-  /// Build validation tab
-  Widget _buildValidationTab() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Configuration Validation',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          SizedBox(height: 16),
-          if (_validationErrors.isEmpty)
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                border: Border.all(color: Colors.green),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Configuration is valid',
-                      style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                border: Border.all(color: Colors.red),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.error, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text(
-                        'Configuration has errors:',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  ..._validationErrors.map((error) => Padding(
-                    padding: EdgeInsets.only(left: 32, bottom: 4),
-                    child: Text(
-                      '• $error',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  )),
-                ],
-              ),
-            ),
-          SizedBox(height: 16),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Configuration Requirements',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  SizedBox(height: 8),
-                  _buildRequirementCard(
-                    'Required Sections',
-                    'Configuration must contain a "routers" section with at least one router.',
-                    Icons.list,
-                  ),
-                  _buildRequirementCard(
-                    'Router Fields',
-                    'Each router must have: name, host, port, username, password.',
-                    Icons.router,
-                  ),
-                  _buildRequirementCard(
-                    'Port Range',
-                    'Port numbers must be between 1 and 65535.',
-                    Icons.network_check,
-                  ),
-                  _buildRequirementCard(
-                    'User Level',
-                    'user_level must be 1 or 2 (1 = mkt1_+mkt2_ scripts, 2 = mkt2_ only).',
-                    Icons.security,
-                  ),
-                  _buildRequirementCard(
-                    'Password Encryption',
-                    'password_encrypted must be true or false. Use encryption for production.',
-                    Icons.lock,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-          // Action buttons for validation tab
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  // Return to editor tab
-                  _tabController.animateTo(0);
-                },
-                icon: Icon(Icons.arrow_back),
-                label: Text('Voltar'),
-              ),
-              SizedBox(width: 16),
-              ElevatedButton.icon(
-                onPressed: _isSaving ? null : _performActualSave,
-                icon: _isSaving 
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(Icons.save),
-                label: Text(_isSaving ? 'Salvando...' : 'SALVAR'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _validationErrors.isEmpty ? Colors.green : Colors.orange,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build requirement info card
-  Widget _buildRequirementCard(String title, String description, IconData icon) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon, color: Theme.of(context).primaryColor),
-        title: Text(title),
-        subtitle: Text(description),
-        isThreeLine: true,
-      ),
-    );
-  }
-
-  /// Build status bar
-  Widget _buildStatusBar() {
-    return Container(
-      height: 32,
-      padding: EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
-      ),
-      child: Row(
-        children: [
-          if (_isModified)
-            Icon(Icons.edit, size: 16, color: Colors.orange),
-          if (_isModified)
-            SizedBox(width: 4),
-          Text(
-            _isModified ? 'Modified' : 'Saved',
-            style: TextStyle(
-              color: _isModified ? Colors.orange : Colors.green,
-              fontSize: 12,
-            ),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              _statusMessage,
-              style: TextStyle(fontSize: 12),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (_validationErrors.isNotEmpty)
-            Row(
-              children: [
-                Icon(Icons.error, size: 16, color: Colors.red),
-                SizedBox(width: 4),
-                Text(
-                  '${_validationErrors.length} error(s)',
-                  style: TextStyle(color: Colors.red, fontSize: 12),
-                ),
-              ],
-            ),
-        ],
       ),
     );
   }
@@ -672,7 +439,7 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
             onPressed: () => Navigator.of(context).pop(false),
             child: Text('Cancel'),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: Text('Confirm'),
           ),
@@ -681,25 +448,15 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     ) ?? false;
   }
 
-  Future<String?> _showInputDialog(String title, String hint, String defaultValue) async {
-    final controller = TextEditingController(text: defaultValue);
-    
-    return await showDialog<String>(
+  void _showSuccessDialog(String title, String message) {
+    showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(hintText: hint),
-          autofocus: true,
-        ),
+        content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
             child: Text('OK'),
           ),
         ],
@@ -711,60 +468,10 @@ class _ConfigEditorPanelState extends State<ConfigEditorPanel> with SingleTicker
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.error, color: Colors.red),
-            SizedBox(width: 8),
-            Text(title),
-          ],
-        ),
+        title: Text(title),
         content: Text(message),
         actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text(title),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showInfoDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.info, color: Colors.blue),
-            SizedBox(width: 8),
-            Text(title),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text('OK'),
           ),

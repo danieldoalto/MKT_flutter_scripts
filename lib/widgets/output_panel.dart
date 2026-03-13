@@ -64,16 +64,19 @@ class _OutputPanelState extends State<OutputPanel> {
                   borderRadius: BorderRadius.circular(4.0),
                   color: Colors.black12,
                 ),
-                child: SingleChildScrollView(
-                  child: _selectedView == 'Command Results'
-                      ? Text(
-                          appState.output.isEmpty ? 'No output yet...' : appState.output,
-                          style: const TextStyle(fontFamily: 'monospace'),
-                        )
-                      : Text(
-                          appState.infoLog.isEmpty ? 'Application started...' : appState.infoLog,
-                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                        ),
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    child: _selectedView == 'Command Results'
+                        ? Text(
+                            appState.output.isEmpty ? 'No output yet...' : appState.output,
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          )
+                        : Text(
+                            appState.infoLog.isEmpty ? 'Application started...' : appState.infoLog,
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                          ),
+                  ),
                 ),
               ),
             ),
